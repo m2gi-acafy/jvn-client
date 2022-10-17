@@ -6,17 +6,17 @@ public class Counter {
    *
    */
   private static final long serialVersionUID = 1L;
-  String data;
+  int data;
 
   public Counter() {
-    data = String.valueOf(0);
+    data = 0;
   }
 
   public void increment() {
-    data = String.valueOf(Integer.parseInt(data) + 1);
+    data++;
   }
 
-  public String read() {
+  public int read() {
     return data;
   }
 
