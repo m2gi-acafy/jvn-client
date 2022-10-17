@@ -1,6 +1,8 @@
 package counter;
 
-public class Counter {
+import java.io.Serializable;
+
+public class Counter implements Serializable {
 
   /**
    *
