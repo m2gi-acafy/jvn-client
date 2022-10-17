@@ -11,6 +11,7 @@ public class Main {
 
   public static void main(String[] args) throws InterruptedException {
     try {
+      Thread.sleep(1000);
       JvnServerImpl js = JvnServerImpl.jvnGetServer();
       JvnObject jo = js.jvnLookupObject("COUNT");
       logger.info("COUNT: JVN server ready...");
@@ -20,10 +21,12 @@ public class Main {
         jo.jvnUnLock();
         js.jvnRegisterObject("COUNT", jo);
       }
-      while (true) {
+      for( int i = 0; i < 50000; i++) {
         // generate random boolean value
-        boolean b = Math.random() < 0.5;
+       // boolean b = Math.random() < 0.5;
+        Boolean b = true;
         if (b) {
+          Thread.sleep(10);
           jo.jvnLockWrite();
           ((Counter) jo.jvnGetSharedObject()).increment();
           System.out.println(
@@ -35,7 +38,6 @@ public class Main {
           System.out.println("Read value: " + ((Counter) jo.jvnGetSharedObject()).read());
           jo.jvnUnLock();
         }
-        Thread.sleep(2000);
       }
     } catch (Exception e) {
       e.printStackTrace();
