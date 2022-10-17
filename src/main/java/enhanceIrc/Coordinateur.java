@@ -1,4 +1,5 @@
-package counter;
+package enhanceIrc;
+
 
 import java.util.logging.Logger;
 import jvn.JvnCoordImpl;
@@ -15,5 +16,4 @@ public class Coordinateur {
       e.printStackTrace();
     }
   }
-
 }

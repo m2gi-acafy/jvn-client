@@ -6,7 +6,6 @@ import jvn.JvnObject;
 import jvn.JvnServerImpl;
 
 public class CounterThread implements Runnable {
-
   private static Logger logger = Logger.getLogger(CounterThread.class.getName());
 
   private String name;
