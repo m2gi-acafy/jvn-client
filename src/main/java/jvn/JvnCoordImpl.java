@@ -88,7 +88,6 @@ public class JvnCoordImpl
     objects.put(jo.jvnGetObjectId(), jo);
     writers.put(jo.jvnGetObjectId(), js);
     joiAndJonsMap.put(jo.jvnGetObjectId(), jon);
-    System.out.println("object was registred");
 
   }
 
@@ -126,21 +125,16 @@ public class JvnCoordImpl
    **/
   public synchronized Serializable jvnLockRead(int joi, JvnRemoteServer js)
       throws RemoteException, JvnException {
-    System.out.println("Coord : jvnLockRead");
     if (writers.containsKey(joi)) {
-      System.out.println("someone is already writing");
       JvnRemoteServer writer = writers.get(joi);
       JvnObject object = (JvnObject) writer.jvnInvalidateWriterForReader(joi);
-      System.out.println("Coord : jvnLockRead : invalidate writer for reader");
       objects.put(joi, object);
       readers.computeIfAbsent(joi,
               k -> Collections.synchronizedList(new ArrayList<>()))
           .add(writer);
       writers.remove(joi);
-      System.out.println("writers " + writers.size());
     }
     readers.computeIfAbsent(joi, k -> Collections.synchronizedList(new ArrayList<>())).add(js);
-    System.out.println("added to readers " + readers.size());
     return objects.get(joi).jvnGetSharedObject();
   }
 
@@ -154,10 +148,8 @@ public class JvnCoordImpl
    **/
   public synchronized Serializable jvnLockWrite(int joi, JvnRemoteServer js)
       throws RemoteException, JvnException {
-    System.out.println("Coord : jvnLockWrite");
     List<JvnRemoteServer> temp = new ArrayList<>();
     // On invalide les readers et on les stocke dans une liste temporaire
-    System.out.println("jvnLockWrite : readers " + readers.size());
     readers.forEach((key, value) -> {
       if (key.equals(joi)) {
         value.forEach(jvnRemoteServer -> {
@@ -177,11 +169,9 @@ public class JvnCoordImpl
     if (readers.containsKey(joi)) {
       readers.get(joi).removeAll(temp);
     }
-    System.out.println("jvnLockWrite : readers " + readers.size());
     JvnRemoteServer writer = writers.get(joi);
     // On invalide le writer
     if (writer != null && !writer.equals(js)) {
-      System.out.println("Coord : jvnLockWrite : invalidate writer");
       JvnObject jvnObject = (JvnObject) writer.jvnInvalidateWriter(joi);
       objects.put(joi, jvnObject);
       writers.remove(joi);

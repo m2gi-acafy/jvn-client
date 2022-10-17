@@ -12,7 +12,6 @@ public class JvnProxyFactory {
 
   public static Object newInstance(Object object, String name)
       throws Exception {
-    System.out.println(object.getClass().getInterfaces()[0]);
     InvocationHandler handler = new JvnProxyHandler(object, name);
     return newProxyInstance(
         object.getClass().getClassLoader(),
