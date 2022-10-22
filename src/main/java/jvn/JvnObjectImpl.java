@@ -5,6 +5,7 @@ import java.rmi.RemoteException;
 import java.util.logging.Logger;
 
 import static java.lang.Thread.currentThread;
+import static jvn.JvnLock.WC;
 
 public class JvnObjectImpl implements JvnObject {
 
@@ -19,6 +20,8 @@ public class JvnObjectImpl implements JvnObject {
     int id;
     JvnLock lockState;
 
+    int processId = 1;
+
 
     public JvnObjectImpl(int id, Serializable object) {
         this.object = object;
@@ -29,45 +32,64 @@ public class JvnObjectImpl implements JvnObject {
     }
 
     @Override
-    public void jvnLockRead() throws JvnException {
+    public synchronized void jvnLockRead() throws JvnException {
         switch (lockState) {
-            case RC -> lockState = JvnLock.R;
-            case WC -> lockState = JvnLock.RWC;
+            case RC -> {
+                lockState = JvnLock.R;
+                System.out .println("lockread : RC -> R");
+            }
+            case WC -> {
+                lockState = JvnLock.RWC;
+                System.out .println("lockread : WC -> RWC");
+            }
             case NL -> {
+                System.out .println("lockread : calling coordinator");
                 object = JvnServerImpl.jvnGetServer().jvnLockRead(id);
                 lockState = JvnLock.R;
+                System.out .println("lockread : NL -> R");
             }
             default -> throw new JvnException("Read lock not possible");
         }
     }
 
     @Override
-    public void jvnLockWrite() throws JvnException {
+    public synchronized void jvnLockWrite() throws JvnException {
         switch (lockState) {
-            case WC, RWC -> lockState = JvnLock.W;
+            case WC, RWC -> {
+                System.out .println("lockwrite : " + ((lockState == WC) ? "WC" : "RWC") + "-> W");
+                lockState = JvnLock.W;
+            }
             case NL, RC, R -> {
-                System.out.println("calling the coord");
+                System.out.println("lockwrite : calling the coord");
                 object = JvnServerImpl.jvnGetServer().jvnLockWrite(id);
-                System.out.println("okay i can continue");
+                System.out.println("lockwrite : NL, RC, R -> W");
                 lockState = JvnLock.W;
             }
             default -> throw new JvnException("Write lock not possible");
         }
-        System.out.println(lockState);
+    }
+
+    public void incrementProcessId(){
+        this.processId ++;
     }
 
     @Override
-    public void jvnUnLock() throws JvnException {
-        System.out.println("["+ currentThread(). getName()+"] I'm unlocking object");
-        System.out.println(lockState);
-        synchronized (this) {
+    public synchronized void jvnUnLock() throws JvnException {
+        //if(processId == 2) {System.out.println("[" + currentThread().getId() + "] I'm unlocking object");}
+        //System.out.println(lockState);
             switch (lockState) {
-                case R -> lockState = JvnLock.RC;
-                case W, RWC -> lockState = JvnLock.WC;
+                case R -> {
+                    lockState = JvnLock.RC;
+                    System.out .println("unlock : R -> RC");
+                }
+                case W, RWC -> {
+                    System.out .println("unlock : W,RWC -> WC");
+                    lockState = WC;
+                }
                 default -> throw new JvnException("Unlock not possible");
             }
-            notifyAll();
-        }
+            System.out.println("unlock : notifying all");
+            notify();
     }
 
     @Override
@@ -81,54 +103,63 @@ public class JvnObjectImpl implements JvnObject {
     }
 
     @Override
-    public void jvnInvalidateReader() throws JvnException, RemoteException {
-        synchronized (this) {
+    public synchronized void jvnInvalidateReader() throws JvnException, RemoteException {
+
             switch (lockState) {
                 case R, RWC -> {
-                    while (lockState == JvnLock.R) {
+                    while (lockState == JvnLock.R || lockState == JvnLock.RWC) {
                         try {
+                            System.out .println("invalidateReader : start waiting");
                             wait();
                         } catch (InterruptedException e) {
                             e.printStackTrace();
                         }
                     }
+                    System.out .println("invalidateReader : stop waiting put other object : R -> NL");
                     lockState = lockState.NL;
                 }
                 case RC -> {
                     lockState = JvnLock.NL;
-                    System.out.println("invalidate reader put NL lock");
+                    System.out.println("invalidateReader : RC -> NL");
                 }
                 case NL -> {
+                    System.out.println("---------------------------");
+                    System.out.println("InvalidateReader : NL -> NL");
+                    System.out.println("---------------------------");
                     break;
                 }
                 default -> throw new JvnException("Invalid lock state");
             }
-        }
+
     }
 
     @Override
     public synchronized Serializable jvnInvalidateWriter() throws JvnException {
-            switch (lockState) {
-                case W, RWC -> {
-                    while (lockState == JvnLock.W || lockState == JvnLock.RWC) {
-                        try {
-                            System.out.println("["+ currentThread(). getName()+"] I'm gonna wait");
-                            wait();
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
+        switch (lockState) {
+            case W, RWC -> {
+                while (lockState == JvnLock.W || lockState == JvnLock.RWC) {
+                    try {
+                        System.out .println("invalidateWriter : start waiting");
+                        wait();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
                     }
-                    lockState = JvnLock.NL;
-                    System.out.println("["+ currentThread(). getName()+"] invalidate writer put NL lock from W after wait");
                 }
-                case WC -> {
-                    lockState = JvnLock.NL;
-                    System.out.println("invalidate writer put NL lock from WC");
-                }
-                case NL -> {
-                    break;
-                }
-                default -> throw new JvnException("Invalid lock state");
+                System.out .println("invalidateWriter : stop waiting, put other object in NL");
+                System.out.println("invalidateWriter state on the other : " + lockState);
+                lockState = JvnLock.NL;
+            }
+            case WC -> {
+                lockState = JvnLock.NL;
+                System.out.println("invalidateWriter : WC -> NL");
+            }
+            case NL -> {
+                System.out.println("---------------------------");
+                System.out.println("InvalidateReader : NL -> NL");
+                System.out.println("---------------------------");
+                break;
+            }
+            default -> throw new JvnException("Invalid lock state");
         }
 
         return this;
@@ -137,19 +168,30 @@ public class JvnObjectImpl implements JvnObject {
     @Override
     public synchronized Serializable jvnInvalidateWriterForReader() throws JvnException {
         switch (lockState) {
-            case RWC -> lockState = JvnLock.R;
-            case WC -> lockState = JvnLock.RC;
+            case RWC -> {
+                lockState = JvnLock.R;
+                System.out.println("invalidateWriterForReader : RWC -> R");
+            }
+            case WC -> {
+                lockState = JvnLock.RC;
+                System.out.println("invalidateWriterForReader : WC -> RC");
+            }
             case NL -> {
+                System.out.println("---------------------------");
+                System.out.println("InvalidateReader : NL -> NL");
+                System.out.println("---------------------------");
                 break;
             }
             case W -> {
                 while (lockState == JvnLock.W) {
                     try {
+                        System.out.println("invalidateWriterForReader : start waiting");
                         wait();
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
                 }
+                System.out.println("invalidateWriterForReader : W -> RC");
                 lockState = JvnLock.RC;
             }
             default -> throw new JvnException("Invalid Lock state");

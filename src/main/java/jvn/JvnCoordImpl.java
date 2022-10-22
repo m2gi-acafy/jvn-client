@@ -135,8 +135,8 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
      * @return the current JVN object state
      * @throws RemoteException, JvnException
      **/
-    public Serializable jvnLockWrite(int joi, JvnRemoteServer js) throws RemoteException, JvnException {
-        synchronized (this) {
+    public synchronized Serializable jvnLockWrite(int joi, JvnRemoteServer js) throws RemoteException, JvnException {
+
             List<JvnRemoteServer> temp = new ArrayList<>();
             // On invalide les readers et on les stocke dans une liste temporaire
             readers.forEach((key, value) -> {
@@ -144,7 +144,6 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
                     value.forEach(jvnRemoteServer -> {
                         try {
                             if (!jvnRemoteServer.equals(js)) {
-                                System.out.println("Coord : jvnLockWrite : invalidate reader");
                                 jvnRemoteServer.jvnInvalidateReader(joi);
                             }
                             temp.add(jvnRemoteServer);
@@ -168,7 +167,7 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
             // On ajoute le writer
             writers.put(joi, js);
             return objects.get(joi).jvnGetSharedObject();
-        }
+
 
     }
 

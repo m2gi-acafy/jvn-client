@@ -11,6 +11,7 @@ public class Main {
 
     public static void main(String[] args) throws InterruptedException {
         try {
+            Thread.sleep(500);
             JvnServerImpl js = JvnServerImpl.jvnGetServer();
             JvnObject jo = js.jvnLookupObject("COUNT");
             logger.info("COUNT: JVN server ready...");
@@ -20,15 +21,16 @@ public class Main {
                 jo.jvnUnLock();
                 js.jvnRegisterObject("COUNT", jo);
             }
-            for (int i = 0; i < 300000; i++) {
-                System.out.println("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
+            for (int i = 0; i < 100000; i++) {
+                System.out.println("i = " + i);
                 System.out.println("lock acquire request");
                 jo.jvnLockWrite();
                 System.out.println("lock acquired successfully");
                 ((Counter) jo.jvnGetSharedObject()).increment();
-                System.out.println("Value was incremented to " + ((Counter) jo.jvnGetSharedObject()).read());
+                int res = ((Counter) jo.jvnGetSharedObject()).read();
+                System.out.println("Value was incremented to " + res);
                 jo.jvnUnLock();
-                System.out.println("index = " + i);
+                System.out.println("unlocked");
                 System.out.println("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
                 //Thread.sleep(100);
             }

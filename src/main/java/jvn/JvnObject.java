@@ -47,6 +47,8 @@ public interface JvnObject extends Serializable {
 	**/
 	public int jvnGetObjectId()
 	throws JvnException;
+
+	public void incrementProcessId();
 	
 	/**
 	* Get the shared object associated to this JvnObject

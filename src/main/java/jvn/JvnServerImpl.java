@@ -130,6 +130,7 @@ public class JvnServerImpl
     try {
       var jvnObject = coord.jvnLookupObject(jon, this);
       if (jvnObject != null) {
+        jvnObject.incrementProcessId();
         objects.put(jvnObject.jvnGetObjectId(), jvnObject);
       }
       return jvnObject;
