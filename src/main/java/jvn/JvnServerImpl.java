@@ -44,9 +44,13 @@ public class JvnServerImpl
   private JvnServerImpl() throws Exception {
     super();
     localObjects = new ConcurrentHashMap<>();
-    registry = LocateRegistry.getRegistry(1099);
-    coord = (JvnRemoteCoord) registry.lookup("JvnCoord");
+    lookupCoord();
     cachedObjectsIds = new ConcurrentLinkedQueue<>();
+  }
+
+  private void lookupCoord() throws Exception {
+    registry = registry == null ? LocateRegistry.getRegistry(1099) : registry;
+    coord = (JvnRemoteCoord) registry.lookup("JvnCoord");
   }
 
   /**
@@ -73,12 +77,15 @@ public class JvnServerImpl
   public void jvnTerminate()
       throws JvnException {
     try {
+      lookupCoord();
       coord.jvnTerminate(this);
       System.out.println("local objects : " + localObjects.size());
       localObjects.clear();
       cachedObjectsIds.clear();
     } catch (RemoteException e) {
       throw new JvnException(e.getMessage());
+    } catch (Exception e) {
+      e.printStackTrace();
     }
 
   }
@@ -92,6 +99,7 @@ public class JvnServerImpl
   public synchronized JvnObject jvnCreateObject(Serializable o)
       throws JvnException {
     try {
+      lookupCoord();
       if (localObjects.size() >= MAX_CACHE_SIZE) {
         Integer id = cachedObjectsIds.poll();
         localObjects.remove(id);
@@ -101,7 +109,7 @@ public class JvnServerImpl
       localObjects.put(id, jvnObject);
       cachedObjectsIds.add(id);
       return jvnObject;
-    } catch (RemoteException e) {
+    } catch (Exception e) {
       throw new RuntimeException(e);
     }
 
@@ -118,9 +126,12 @@ public class JvnServerImpl
   public void jvnRegisterObject(String jon, JvnObject jo)
       throws JvnException {
     try {
+      lookupCoord();
       coord.jvnRegisterObject(jon, jo, this);
     } catch (RemoteException e) {
       throw new JvnException(e.getMessage());
+    } catch (Exception e) {
+      e.printStackTrace();
     }
   }
 
@@ -135,6 +146,7 @@ public class JvnServerImpl
       throws JvnException {
 
     try {
+      lookupCoord();
       var jvnObject = coord.jvnLookupObject(jon, this);
       if (jvnObject != null) {
         if (localObjects.size() >= MAX_CACHE_SIZE) {
@@ -145,7 +157,7 @@ public class JvnServerImpl
         cachedObjectsIds.add(jvnObject.jvnGetObjectId());
       }
       return jvnObject;
-    } catch (RemoteException e) {
+    } catch (Exception e) {
       throw new JvnException(e.getMessage());
     }
   }
@@ -160,8 +172,9 @@ public class JvnServerImpl
   public Serializable jvnLockRead(int joi)
       throws JvnException {
     try {
+      lookupCoord();
       return coord.jvnLockRead(joi, this);
-    } catch (RemoteException e) {
+    } catch (Exception e) {
       throw new JvnException(e.getMessage());
     }
 
@@ -177,8 +190,9 @@ public class JvnServerImpl
   public Serializable jvnLockWrite(int joi)
       throws JvnException {
     try {
+      lookupCoord();
       return coord.jvnLockWrite(joi, this);
-    } catch (RemoteException e) {
+    } catch (Exception e) {
       throw new JvnException(e.getMessage());
     }
   }

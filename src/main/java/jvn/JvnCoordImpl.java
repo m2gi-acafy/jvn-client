@@ -9,6 +9,12 @@
 
 package jvn;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -55,8 +61,8 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
     writers = new ConcurrentHashMap<>();
     joiAndJonsMap = new HashMap<>();
     registry = registry == null ? LocateRegistry.createRegistry(1099) : registry;
-    registry.rebind("JvnCoord", this);
-
+    registry.bind("JvnCoord", this);
+    loadState();
   }
 
   public static JvnCoordImpl getInstance() throws Exception {
@@ -86,7 +92,11 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
     objects.put(jo.jvnGetObjectId(), jo);
     writers.put(jo.jvnGetObjectId(), js);
     joiAndJonsMap.put(jo.jvnGetObjectId(), jon);
-
+    try {
+      saveState();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
   }
 
   /**
@@ -133,6 +143,11 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
         writers.remove(joi);
       }
       readers.computeIfAbsent(joi, k -> Collections.synchronizedList(new ArrayList<>())).add(js);
+      try {
+        saveState();
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
       return objects.get(joi).jvnGetSharedObject();
     }
   }
@@ -147,7 +162,6 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
    **/
   public synchronized Serializable jvnLockWrite(int joi, JvnRemoteServer js)
       throws RemoteException, JvnException {
-
     List<JvnRemoteServer> temp = new ArrayList<>();
     // On invalide les readers et on les stocke dans une liste temporaire
     readers.forEach((key, value) -> {
@@ -177,9 +191,12 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
     }
     // On ajoute le writer
     writers.put(joi, js);
+    try {
+      saveState();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
     return objects.get(joi).jvnGetSharedObject();
-
-
   }
 
   /**
@@ -201,6 +218,30 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
         writers.remove(key);
       }
     });
+  }
+
+  private void loadState() throws IOException, ClassNotFoundException {
+    File file = new File("coord.ser");
+    if (file.exists()) {
+      FileInputStream fileIn = new FileInputStream(file);
+      ObjectInputStream in = new ObjectInputStream(fileIn);
+      JvnCoordImpl coord = (JvnCoordImpl) in.readObject();
+      this.readers = coord.readers;
+      this.writers = coord.writers;
+      this.objects = coord.objects;
+      System.out.println(objects.size());
+      this.joiAndJonsMap = coord.joiAndJonsMap;
+      in.close();
+      fileIn.close();
+    }
+  }
+
+  private void saveState() throws IOException, IOException {
+    FileOutputStream fileOut = new FileOutputStream("coord.ser");
+    ObjectOutputStream out = new ObjectOutputStream(fileOut);
+    out.writeObject(this);
+    out.close();
+    fileOut.close();
   }
 
 }
