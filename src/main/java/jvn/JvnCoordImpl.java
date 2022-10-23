@@ -136,11 +136,16 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
     synchronized (this) {
       if (writers.containsKey(joi)) {
         JvnRemoteServer writer = writers.get(joi);
-        JvnObject object = (JvnObject) writer.jvnInvalidateWriterForReader(joi);
-        objects.put(joi, object);
-        readers.computeIfAbsent(joi, k -> Collections.synchronizedList(new ArrayList<>()))
-            .add(writer);
-        writers.remove(joi);
+        try {
+          JvnObject object = (JvnObject) writer.jvnInvalidateWriterForReader(joi);
+          objects.put(joi, object);
+          readers.computeIfAbsent(joi, k -> Collections.synchronizedList(new ArrayList<>()))
+              .add(writer);
+        } catch (Exception e) {
+          System.out.println("Erreur lors de l'invalidateWriterForReader");
+        } finally {
+          writers.remove(joi);
+        }
       }
       readers.computeIfAbsent(joi, k -> Collections.synchronizedList(new ArrayList<>())).add(js);
       try {
@@ -167,13 +172,14 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
     readers.forEach((key, value) -> {
       if (key.equals(joi)) {
         value.forEach(jvnRemoteServer -> {
-          try {
-            if (!jvnRemoteServer.equals(js)) {
+          if (!jvnRemoteServer.equals(js)) {
+            try {
               jvnRemoteServer.jvnInvalidateReader(joi);
+            } catch (RemoteException | JvnException e) {
+              System.out.println("Erreur lors de l'invalidation du reader");
+            } finally {
+              temp.add(jvnRemoteServer);
             }
-            temp.add(jvnRemoteServer);
-          } catch (RemoteException | JvnException e) {
-            throw new RuntimeException(e);
           }
         });
       }
@@ -185,15 +191,21 @@ public class JvnCoordImpl extends UnicastRemoteObject implements JvnRemoteCoord 
     JvnRemoteServer writer = writers.get(joi);
     // On invalide le writer
     if (writer != null && !writer.equals(js)) {
-      JvnObject jvnObject = (JvnObject) writer.jvnInvalidateWriter(joi);
-      objects.put(joi, jvnObject);
-      writers.remove(joi);
+      try {
+        JvnObject jvnObject = (JvnObject) writer.jvnInvalidateWriter(joi);
+        objects.put(joi, jvnObject);
+      } catch (Exception e) {
+        System.out.println("Erreur lors de l'invalidation du writer");
+      } finally {
+        writers.remove(joi);
+      }
     }
     // On ajoute le writer
     writers.put(joi, js);
     try {
       saveState();
     } catch (IOException e) {
+      System.out.println("Erreur lors de la sauvegarde de l'état");
       e.printStackTrace();
     }
     return objects.get(joi).jvnGetSharedObject();
