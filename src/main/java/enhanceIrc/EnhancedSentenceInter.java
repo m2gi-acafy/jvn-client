@@ -11,4 +11,7 @@ public interface EnhancedSentenceInter extends Serializable {
   @Action("read")
   String read();
 
+  @Action("terminate")
+  void terminate();
+
 }

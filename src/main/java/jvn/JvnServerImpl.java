@@ -15,8 +15,9 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.Map;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.logging.Logger;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 
 public class JvnServerImpl
@@ -27,12 +28,12 @@ public class JvnServerImpl
    *
    */
   private static final long serialVersionUID = 1L;
-  private Logger logger = Logger.getLogger(JvnServerImpl.class.getName());
-  // A JVN server is managed as a singleton
+  private static final Integer MAX_CACHE_SIZE = 3;
   private static JvnServerImpl js = null;
   private transient JvnRemoteCoord coord;
   private transient Registry registry;
-  private Map<Integer, JvnObject> objects;
+  private Map<Integer, JvnObject> localObjects;
+  private Queue<Integer> cachedObjectsIds;
 
 
   /**
@@ -42,10 +43,10 @@ public class JvnServerImpl
    **/
   private JvnServerImpl() throws Exception {
     super();
-    objects = new ConcurrentHashMap<>();
+    localObjects = new ConcurrentHashMap<>();
     registry = LocateRegistry.getRegistry(1099);
     coord = (JvnRemoteCoord) registry.lookup("JvnCoord");
-
+    cachedObjectsIds = new ConcurrentLinkedQueue<>();
   }
 
   /**
@@ -73,6 +74,9 @@ public class JvnServerImpl
       throws JvnException {
     try {
       coord.jvnTerminate(this);
+      System.out.println("local objects : " + localObjects.size());
+      localObjects.clear();
+      cachedObjectsIds.clear();
     } catch (RemoteException e) {
       throw new JvnException(e.getMessage());
     }
@@ -88,9 +92,14 @@ public class JvnServerImpl
   public synchronized JvnObject jvnCreateObject(Serializable o)
       throws JvnException {
     try {
+      if (localObjects.size() >= MAX_CACHE_SIZE) {
+        Integer id = cachedObjectsIds.poll();
+        localObjects.remove(id);
+      }
       var id = coord.jvnGetObjectId();
       var jvnObject = new JvnObjectImpl(id, o);
-      objects.put(id, jvnObject);
+      localObjects.put(id, jvnObject);
+      cachedObjectsIds.add(id);
       return jvnObject;
     } catch (RemoteException e) {
       throw new RuntimeException(e);
@@ -109,9 +118,7 @@ public class JvnServerImpl
   public void jvnRegisterObject(String jon, JvnObject jo)
       throws JvnException {
     try {
-      objects.put(jo.jvnGetObjectId(), jo);
       coord.jvnRegisterObject(jon, jo, this);
-
     } catch (RemoteException e) {
       throw new JvnException(e.getMessage());
     }
@@ -130,8 +137,12 @@ public class JvnServerImpl
     try {
       var jvnObject = coord.jvnLookupObject(jon, this);
       if (jvnObject != null) {
-        jvnObject.incrementProcessId();
-        objects.put(jvnObject.jvnGetObjectId(), jvnObject);
+        if (localObjects.size() >= MAX_CACHE_SIZE) {
+          Integer id = cachedObjectsIds.poll();
+          localObjects.remove(id);
+        }
+        localObjects.put(jvnObject.jvnGetObjectId(), jvnObject);
+        cachedObjectsIds.add(jvnObject.jvnGetObjectId());
       }
       return jvnObject;
     } catch (RemoteException e) {
@@ -182,7 +193,7 @@ public class JvnServerImpl
    **/
   public void jvnInvalidateReader(int joi)
       throws RemoteException, JvnException {
-    objects.get(joi).jvnInvalidateReader();
+    localObjects.get(joi).jvnInvalidateReader();
   }
 
   /**
@@ -194,7 +205,7 @@ public class JvnServerImpl
    **/
   public Serializable jvnInvalidateWriter(int joi)
       throws RemoteException, JvnException {
-    return objects.get(joi).jvnInvalidateWriter();
+    return localObjects.get(joi).jvnInvalidateWriter();
   }
 
   ;
@@ -208,9 +219,7 @@ public class JvnServerImpl
    **/
   public Serializable jvnInvalidateWriterForReader(int joi)
       throws RemoteException, JvnException {
-    System.out.println("jvnInvalidateWriterForReader server");
-    Serializable serializable = objects.get(joi).jvnInvalidateWriterForReader();
-    return serializable;
+    return localObjects.get(joi).jvnInvalidateWriterForReader();
   }
 
   ;

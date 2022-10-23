@@ -13,19 +13,20 @@ public class JvnProxyHandler implements InvocationHandler {
 
   private static final String READ = "read";
   private static final String WRITE = "write";
+  private static final String TERMINATE = "terminate";
   private static final String EMPTY_STRING = "";
   private Logger logger = Logger.getLogger(JvnProxyHandler.class.getName());
   private JvnObject jo;
+  private JvnServerImpl js;
 
   public JvnProxyHandler(Object obj, String name) throws JvnException {
-    JvnServerImpl js = JvnServerImpl.jvnGetServer();
+    js = JvnServerImpl.jvnGetServer();
     assert js != null;
     this.jo = js.jvnLookupObject(name);
     if (this.jo == null) {
       this.jo = js.jvnCreateObject((Serializable) obj);
       js.jvnRegisterObject(name, this.jo);
       jo.jvnUnLock();
-      js.jvnRegisterObject("IRC", jo);
     }
   }
 
@@ -39,6 +40,10 @@ public class JvnProxyHandler implements InvocationHandler {
     switch (annotation) {
       case READ -> jo.jvnLockRead();
       case WRITE -> jo.jvnLockWrite();
+      case TERMINATE -> {
+        js.jvnTerminate();
+        return null;
+      }
       default -> System.out.println("No annotation found");
     }
     Object result = method.invoke(jo.jvnGetSharedObject(), args);

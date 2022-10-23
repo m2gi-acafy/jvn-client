@@ -8,8 +8,6 @@
 
 package enhanceIrc;
 
-import jvn.annotations.Action;
-
 public class EnhancedSentence implements EnhancedSentenceInter {
 
   /**
@@ -29,6 +27,11 @@ public class EnhancedSentence implements EnhancedSentenceInter {
 
   public String read() {
     return data;
+  }
+
+  @Override
+  public void terminate() {
+    System.out.println("terminate");
   }
 
 }

@@ -12,7 +12,7 @@
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
-      <module name="jvnClient" options="" />
+      <module name="jvnClient" options="--add-modules java.base,java.logging,java.rmi,java.desktop" />
     </option>
   </component>
 </project>
