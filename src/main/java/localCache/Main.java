@@ -1,10 +1,10 @@
 package localCache;
 
-import enhanceIrc.EnhancedSentence;
-import enhanceIrc.EnhancedSentenceInter;
+import enhancedIrc.EnhancedSentence;
+import enhancedIrc.EnhancedSentenceInter;
 import jvn.proxy.JvnProxyFactory;
 
-public class main {
+public class Main {
 
   public static void main(String[] args) throws Exception {
     // TODO Auto-generated method stub

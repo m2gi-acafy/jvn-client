@@ -5,7 +5,7 @@
  * Authors: 
  */
 
-package enhanceIrc;
+package enhancedIrc;
 
 import java.awt.Button;
 import java.awt.Color;

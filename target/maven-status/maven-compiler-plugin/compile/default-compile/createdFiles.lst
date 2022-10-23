@@ -1,1 +1,6 @@
-com\uga\jvnClient\Main.class
+enhancedIrc\writeListener.class
+enhancedIrc\EnhancedIrc.class
+enhancedIrc\readListener.class
+enhancedIrc\Coordinateur.class
+enhancedIrc\EnhancedSentence.class
+enhancedIrc\EnhancedSentenceInter.class

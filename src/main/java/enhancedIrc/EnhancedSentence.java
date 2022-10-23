@@ -6,7 +6,7 @@
  * Authors: 
  */
 
-package enhanceIrc;
+package enhancedIrc;
 
 public class EnhancedSentence implements EnhancedSentenceInter {
 

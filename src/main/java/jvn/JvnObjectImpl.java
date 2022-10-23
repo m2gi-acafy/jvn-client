@@ -4,7 +4,6 @@ import static jvn.JvnLock.WC;
 
 import java.io.Serializable;
 import java.rmi.RemoteException;
-import java.util.logging.Logger;
 
 public class JvnObjectImpl implements JvnObject {
 
@@ -30,19 +29,11 @@ public class JvnObjectImpl implements JvnObject {
   @Override
   public synchronized void jvnLockRead() throws JvnException {
     switch (lockState) {
-      case RC -> {
-        lockState = JvnLock.R;
-        System.out.println("lockread : RC -> R");
-      }
-      case WC -> {
-        lockState = JvnLock.RWC;
-        System.out.println("lockread : WC -> RWC");
-      }
+      case RC -> lockState = JvnLock.R;
+      case WC -> lockState = JvnLock.RWC;
       case NL -> {
-        System.out.println("lockread : calling coordinator");
         object = JvnServerImpl.jvnGetServer().jvnLockRead(id);
         lockState = JvnLock.R;
-        System.out.println("lockread : NL -> R");
       }
       default -> throw new JvnException("Read lock not possible");
     }
@@ -51,9 +42,7 @@ public class JvnObjectImpl implements JvnObject {
   @Override
   public synchronized void jvnLockWrite() throws JvnException {
     switch (lockState) {
-      case WC, RWC -> {
-        lockState = JvnLock.W;
-      }
+      case WC, RWC -> lockState = JvnLock.W;
       case NL, RC, R -> {
         object = JvnServerImpl.jvnGetServer().jvnLockWrite(id);
         lockState = JvnLock.W;
@@ -143,11 +132,11 @@ public class JvnObjectImpl implements JvnObject {
         while (lockState == JvnLock.W) {
           try {
             wait();
-            lockState = JvnLock.RC;
           } catch (InterruptedException e) {
             e.printStackTrace();
           }
         }
+        lockState = JvnLock.RC;
       }
       default -> throw new JvnException("Invalid Lock state");
     }

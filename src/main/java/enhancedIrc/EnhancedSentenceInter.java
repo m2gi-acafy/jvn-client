@@ -1,4 +1,4 @@
-package enhanceIrc;
+package enhancedIrc;
 
 import java.io.Serializable;
 import jvn.annotations.Action;
